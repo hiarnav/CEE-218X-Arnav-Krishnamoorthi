@@ -1,0 +1,175 @@
+knitr::opts_chunk$set(echo = F, warnings = F, messages = F)
+
+library(sf)
+library(tigris)
+library(mapview)
+library(censusapi)
+library(tidyverse)
+library(leaflet)
+library(tidyverse)
+library(plotly)
+
+quarters <- 1:4
+years <- 2017:2021
+
+pge_elec_data <- NULL
+for (year in years){
+  for(quarter in quarters){
+    if(year == 2021 && quarter > 2){
+      break
+    }
+    filename <-
+      paste0(
+        "pge/PGE_",
+        year,
+        "_Q",
+        quarter,
+        "_",
+        "Electric",
+        "UsageByZip.csv"
+      )
+    temp <- read_csv(filename)
+    pge_elec_data <- rbind(pge_elec_data, temp)
+  }
+}
+
+pge_elec_final <-
+  pge_elec_data %>% 
+  filter(
+    CUSTOMERCLASS %in% 
+      c(
+        "Elec- Residential",
+        "Elec- Commercial"
+      )
+  ) %>% 
+  select(
+    -c(COMBINED, AVERAGEKWH)
+  ) %>% 
+  mutate(
+    DATE = 
+      paste(
+        MONTH, 
+        "01",
+        YEAR,
+        sep="-"
+      ) %>% as.Date()
+  ) %>% 
+  group_by(DATE, CUSTOMERCLASS) %>% 
+  summarize(
+    TOTALKWH = 
+      sum(
+        TOTALKWH, 
+        na.rm = T
+      )  * 3.412,
+    TOTALCUSTOMERS =
+      sum(
+        TOTALCUSTOMERS,
+        na.rm = T
+      )
+  ) %>% 
+  mutate(
+    AVERAGEKWH =
+      TOTALKWH/TOTALCUSTOMERS
+  )
+
+pge_elec_chart <-
+  pge_elec_final %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = DATE,
+      y = TOTALKWH,
+      fill = CUSTOMERCLASS
+    ),
+    stat = "identity",
+    position = "stack"
+  ) +
+  labs(
+    x = "Month",
+    y = "kWh",
+    title = "PG&E Territory Monthly Electricity Usage 2017-Present",
+    fill = "Electricity Type"
+  )
+
+pge_elec_chart
+
+pge_gas_data <- NULL
+for (year in years){
+  for(quarter in quarters){
+    if(year == 2021 && quarter > 2){
+      break
+    }
+    filename <-
+      paste0(
+        "pge/PGE_",
+        year,
+        "_Q",
+        quarter,
+        "_",
+        "Gas",
+        "UsageByZip.csv"
+      )
+    temp <- read_csv(filename)
+    pge_gas_data <- rbind(pge_gas_data, temp)
+  }
+}
+
+pge_gas_final <-
+  pge_gas_data %>% 
+  filter(
+    CUSTOMERCLASS %in% 
+      c(
+        "Gas- Residential",
+        "Gas- Commercial"
+      )
+  ) %>% 
+  select(
+    -c(COMBINED, AVERAGETHM)
+  ) %>% 
+  mutate(
+    DATE = 
+      paste(
+        MONTH, 
+        "01",
+        YEAR,
+        sep="-"
+      ) %>% as.Date()
+  ) %>%
+group_by(DATE, CUSTOMERCLASS) %>% 
+  summarize(
+    TOTALTHM = 
+      sum(
+        TOTALTHM, 
+        na.rm = T
+      )  * 3.412,
+    TOTALCUSTOMERS =
+      sum(
+        TOTALCUSTOMERS,
+        na.rm = T
+      )
+  ) %>% 
+  mutate(
+    AVERAGETHM =
+      TOTALTHM/TOTALCUSTOMERS
+  )
+
+pge_gas_chart <-
+  pge_gas_final %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = DATE,
+      y = TOTALTHM,
+      fill = CUSTOMERCLASS
+    ),
+    stat = "identity",
+    position = "stack"
+  ) +
+  labs(
+    x = "Month",
+    y = "THM",
+    title = "PG&E Territory Monthly Gas Usage 2017-Present",
+    fill = "Gas Type"
+  )
+
+pge_gas_chart
